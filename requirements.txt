@@ -1,0 +1,4 @@
+pyautogui
+datetime
+numpy
+pynput

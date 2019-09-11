@@ -8,12 +8,13 @@
 import threading
 from pynput import keyboard
 import pynput
-import os
+import os, sys
 import numpy
 import time
 import datetime
 import random
 import pyautogui
+import json
 
 play = True
 head_orientation = 'd'
@@ -47,15 +48,21 @@ colors = { #Este diccionario contiene todos los codigos anci de color
 #   -|----------------> 
 #                     X
 
+def clear_console():
+    if sys.platform == 'win32':
+        os.system('cls')
+    else:
+        os.system('clear')
+
 def main():
-    
     input_thread = threading.Thread(target=start_input,name='Keyboard input')
     input_thread.start()
     snake_thread = threading.Thread(target=start_snake,name='Snake')
     snake_thread.start()
-    #Añadir reincio
-
-
+    
+def restart():
+    os.execv(sys.executable, ['python'] + sys.argv)
+    
 def start_snake():
     s = snake()
 
@@ -67,10 +74,9 @@ class snake:
         self.body = [
             {'x':1,'y':1}
         ]
-        #self.x_=1
-        #self.y_=1
-        self.head_char = '\033[' + colors['Green'] + '@ \033[0m'
-        self.char = '\033[' + colors['Green'] + '* \033[0m'
+        self.name = input('Your Name: ')
+        self.head_char = '\033[' + colors["Green"] + '@ \033[0m'
+        self.char = '\033[' + colors["Green"] + '* \033[0m'
         self.length = 1
         self.table = self.init_table()
         self.spawn_food()
@@ -106,8 +112,8 @@ class snake:
         self.table[self.body[0]['x']][self.body[0]['y']] = self.head_char
 
     def draw_table(self):
+        clear_console()
         global score
-        os.system ("cls")
         print('Score:' + str(score))
         str_table = ''
         for line in self.table:
@@ -143,12 +149,16 @@ class snake:
     def collisions(self): # Este metodo se encargará de todas las coliciones con la comida
         if self.body[0]['x'] == food['x'] and self.body[0]['y'] == food['y']:
             self.snake_grow()
-            global score, display_time
+            global score, display_time,color
             score+=1
-            if score == 10:                  # Curda de dificultad
-                display_time-= 0.02          #
-            if score == 50:                  #
-                display_time-= 0.03          #
+            if score == 10:                  # Curva de dificultad
+                display_time-= 0.02          
+                self.head_char = '\033[' + colors['Blue'] + '@ \033[0m'
+                self.char = '\033[' + colors['Blue'] + '* \033[0m'           
+            if score == 50:                  
+                display_time-= 0.03      
+                self.head_char = '\033[' + colors['Cyan'] + '@ \033[0m'
+                self.char = '\033[' + colors['Cyan'] + '* \033[0m'                     
             self.spawn_food()
         positions = []
         for part in self.body:
@@ -162,8 +172,36 @@ class snake:
             pyautogui.press('esc')
             time.sleep(0.5)
             print('\033[' + colors['Red'] + 'You lose! \033[0m')
+            time.sleep(1.5)
+            self.save_score()
+            self.see_scores()
+            restart()
 
-    
+    def save_score(self):
+        data = []
+        with open('scores.json','r') as file:
+            data = json.load(file)
+        global score
+        data.append({"name":self.name,"score":score})
+        #str_data = str(data)
+
+        with open('scores.json','w') as file:
+            json_str = json.dumps(data)
+            file.write(json_str)
+
+    def see_scores(self):
+        clear_console()
+        data = []
+        with open('scores.json','r') as file:
+            data = json.load(file)
+        print('Higher scores:')
+        data = sorted(data, key = lambda i: i['score'])
+        print('---> '+ data[0]['name'] +' --->  SCORE: ' + str(data[0]['score']))
+        if len(data) > 2:
+            print('---> '+ data[1]['name'] +'  SCORE: ' + str(data[1]['score']))
+        if len(data) > 3:
+            print('---> '+ data[2]['name'] +'  SCORE: ' + str(data[2]['score']))
+        time.sleep(10)
     def snake_grow(self):
         self.body.append({'x':0,'y':0})
 
@@ -224,6 +262,7 @@ class key_input:
         global display_time,head_orientation
         head_orientation = o
         time.sleep(display_time)
+
 
 if __name__ == "__main__":
     main()
